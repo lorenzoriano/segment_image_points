@@ -1,0 +1,25 @@
+<package>
+  <description brief="segment_image_points">
+
+     segment_image_points
+
+  </description>
+  <author>pezzotto</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/segment_image_points</url>
+  <depend package="image_geometry"/>
+  <depend package="image_transport"/>
+  <depend package="opencv2"/>
+  <depend package="cv_bridge"/>
+  <depend package="tf"/>
+  <depend package="image_view"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf_conversions"/>
+
+</package>
+
+

@@ -1,0 +1,4 @@
+*.swp
+bin/
+build/
+CMakeLists.txt.user
