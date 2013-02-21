@@ -28,7 +28,7 @@ public:
         ROS_INFO("Using input cloud of %s", cloud_in.c_str());
         ROS_INFO("Using input images of %s", camera_in.c_str());
         if (image_source_)
-            ROS_INFO("Using source camer pixels for image creation");
+            ROS_INFO("Using source camera pixels for image creation");
         else
             ROS_INFO("Using point rgb values for the image cration");
 
@@ -70,8 +70,9 @@ public:
 
         cv::Mat newimage(last_image_.size(), CV_8UC3);
 
-        newimage = cv::Scalar(0);
+        ROS_INFO_ONCE("Using an image size of (%d, %d)", last_image_.rows, last_image_.cols);
 
+        newimage = cv::Scalar(0);
 
         for (size_t i =0; i<camera_cloud.size(); i++) {
             if (isnan (camera_cloud.points[i].x) || isnan (camera_cloud.points[i].y) || isnan (camera_cloud.points[i].z))
@@ -86,24 +87,28 @@ public:
                 continue;
             }
 
+            uchar r, g, b;
             //using the source image
             if (image_source_)
             {
-                newimage.at<cv::Vec3b>(uv) = last_image_.at<cv::Vec3b>(uv);
-            }
+                cv::Point3_<uchar>* p = last_image_.ptr<cv::Point3_<uchar> >(image_i, image_j);
+                b = p->x;
+                g = p->y;
+                r = p->z;
 
+//                newimage.at<cv::Vec3b>(uv) = last_image_.at<cv::Vec3b>(uv);
+            }
             //using the pointcloud information
             else
             {
-                uchar pointcloud_r= camera_cloud.points[i].r;
-                uchar pointcloud_g= camera_cloud.points[i].g;
-                uchar pointcloud_b= camera_cloud.points[i].b;
-
-                cv::Point3_<uchar>* p = newimage.ptr<cv::Point3_<uchar> >(image_i, image_j);
-                p->x = pointcloud_b;
-                p->y = pointcloud_g;
-                p->z = pointcloud_r;
+                r = camera_cloud.points[i].r;
+                g = camera_cloud.points[i].g;
+                b = camera_cloud.points[i].b;
             }
+            cv::Point3_<uchar>* p = newimage.ptr<cv::Point3_<uchar> >(image_i, image_j);
+            p->x = b;
+            p->y = g;
+            p->z = r;
 
         }
 
