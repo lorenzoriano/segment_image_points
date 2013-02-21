@@ -22,8 +22,15 @@ public:
         nh_.param<std::string>("cloud_in", cloud_in, "/camera/depth_registered/points");
         std::string camera_in;
         nh_.param<std::string>("camera_in", camera_in, "/camera/rgb/image_rect_color");
+        nh_.param<bool>("use_pixels", image_source_, true);
+
+
         ROS_INFO("Using input cloud of %s", cloud_in.c_str());
         ROS_INFO("Using input images of %s", camera_in.c_str());
+        if (image_source_)
+            ROS_INFO("Using source camer pixels for image creation");
+        else
+            ROS_INFO("Using point rgb values for the image cration");
 
         pc_sub_ = nh_.subscribe(cloud_in, 1, &PointCloudProjector::cloud_cb, this);
         camerasub_ = it_.subscribeCamera(camera_in, 1, &PointCloudProjector::image_cb, this);
@@ -62,44 +69,49 @@ public:
         pcl_ros::transformPointCloud(camera_cloud, camera_cloud, transform);
 
         cv::Mat newimage(last_image_.size(), CV_8UC3);
+
         newimage = cv::Scalar(0);
 
-        int tot_points = 0;
-        int filled_points = 0;
+
         for (size_t i =0; i<camera_cloud.size(); i++) {
-            tot_points++;
             if (isnan (camera_cloud.points[i].x) || isnan (camera_cloud.points[i].y) || isnan (camera_cloud.points[i].z))
                    continue;
             cv::Point3d pt_cv(camera_cloud.points[i].x, camera_cloud.points[i].y, camera_cloud.points[i].z);
             cv::Point2d uv = cam_model_.project3dToPixel(pt_cv);
+
             int image_i = int(uv.y);
             int image_j = int(uv.x);
-            if (image_i >= newimage.rows || image_i < 0 || image_j >= newimage.cols || image_j < 0 ) {
+
+            if (image_i >= last_image_.rows || image_i < 0 || image_j >= last_image_.cols || image_j < 0 ) {
                 continue;
             }
-//            ROS_INFO("Accessing point (%d, %d)", image_i, image_j);
-            cv::Point3_<uchar>* p = newimage.ptr<cv::Point3_<uchar> >(image_i, image_j);
-            p->x = camera_cloud.points[i].r;
-            p->y = camera_cloud.points[i].g;
-            p->z = camera_cloud.points[i].b;
-//            uchar p0 = newimage.at<cv::Vec3b>(uv)[0];
-//            uchar p1 = newimage.at<cv::Vec3b>(uv)[1];
-//            uchar p2 = newimage.at<cv::Vec3b>(uv)[2];
-//            uchar p0 = camera_cloud.points[i].r;
-//            uchar p1 = camera_cloud.points[i].g;
-//            uchar p2 = camera_cloud.points[i].b;
 
-//            ROS_INFO("%d %d %d", p0, p1, p2);
-            filled_points++;
+            //using the source image
+            if (image_source_)
+            {
+                newimage.at<cv::Vec3b>(uv) = last_image_.at<cv::Vec3b>(uv);
+            }
+
+            //using the pointcloud information
+            else
+            {
+                uchar pointcloud_r= camera_cloud.points[i].r;
+                uchar pointcloud_g= camera_cloud.points[i].g;
+                uchar pointcloud_b= camera_cloud.points[i].b;
+
+                cv::Point3_<uchar>* p = newimage.ptr<cv::Point3_<uchar> >(image_i, image_j);
+                p->x = pointcloud_b;
+                p->y = pointcloud_g;
+                p->z = pointcloud_r;
+            }
 
         }
 
         std_msgs::Header newheader;
         newheader.frame_id = cam_model_.tfFrame();
         newheader.stamp = image_time_;
-        cv_bridge::CvImage cvimage(newheader, "rgb8", newimage);
+        cv_bridge::CvImage cvimage(newheader, "bgr8", newimage);
         imagepub_.publish(cvimage.toImageMsg());
-        ROS_INFO("Filled %d points out of %d", filled_points, tot_points);
 
     }
 
@@ -112,7 +124,7 @@ public:
             last_image_ = input_bridge->image;
         }
         catch (cv_bridge::Exception& ex){
-          ROS_ERROR("[draw_frames] Failed to convert image");
+          ROS_ERROR("Failed to convert image");
           return;
         }
         cam_model_.fromCameraInfo(info_msg);
@@ -133,6 +145,7 @@ private:
     ros::Time image_time_;
     image_geometry::PinholeCameraModel cam_model_;
     bool newimage_;
+    bool image_source_;
 
 
 };
